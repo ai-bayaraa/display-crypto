@@ -1,0 +1,730 @@
+:root {
+  --bg-main: #07090e;
+  --bg-card: #0d121e;
+  --bg-card-elevated: #111726;
+  --bg-card-border: rgba(255, 255, 255, 0.08);
+  --bg-stat-box: rgba(255, 255, 255, 0.035);
+
+  --text-primary: #f0f4f8;
+  --text-secondary: #8e9bb0;
+  --text-muted: #53627a;
+
+  /* Theme Accents */
+  --aave-cyan: #2ebac6;
+  --aave-purple: #b6509e;
+  --btc-orange: #f7931a;
+
+  /* Financial Color Tokens */
+  --green: #0ecb81;
+  --green-bg: rgba(14, 203, 129, 0.14);
+  --red: #f6465d;
+  --red-bg: rgba(246, 70, 93, 0.14);
+
+  --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--font-heading);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  position: relative;
+  user-select: none;
+}
+
+/* Ambient background styling: 100% GPU-efficient radial gradients with NO filter: blur() */
+.ambient-glow {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glow-aave {
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(46, 186, 198, 0.12) 0%, rgba(182, 80, 158, 0.05) 45%, transparent 70%);
+  top: -120px;
+  left: 2%;
+}
+
+.glow-btc {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(247, 147, 26, 0.10) 0%, transparent 65%);
+  bottom: -80px;
+  right: 2%;
+}
+
+/* TV Full Container */
+.tv-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  height: 100vh;
+  padding: 1.25rem 1.75rem;
+  gap: 1.25rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* Top Nav / Header: Solid dark surface, NO heavy backdrop-filter */
+.top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  background: #0d121c;
+  border: 1px solid var(--bg-card-border);
+  border-radius: 16px;
+  flex-shrink: 0;
+  contain: layout style;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.brand-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(46, 186, 198, 0.2), rgba(247, 147, 26, 0.2));
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #ffffff;
+}
+
+.brand-accent {
+  background: linear-gradient(90deg, var(--aave-cyan), var(--btc-orange));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-left: 0.15rem;
+}
+
+.brand-subtitle {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.12em;
+}
+
+.status-clock-group {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+/* Connection Pill: Zero infinite CSS animation */
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.4rem 0.85rem;
+  border-radius: 100px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ffd000;
+  box-shadow: 0 0 6px #ffd000;
+}
+
+.connection-status.connected .status-dot {
+  background-color: var(--green);
+  box-shadow: 0 0 6px var(--green);
+}
+
+.connection-status.disconnected .status-dot {
+  background-color: var(--red);
+  box-shadow: 0 0 6px var(--red);
+}
+
+.ping-badge {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+/* Clock */
+.clock-display {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  padding-left: 1.25rem;
+}
+
+.time-text {
+  font-family: var(--font-mono);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #fff;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.date-text {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Icon Button */
+.icon-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+/* Main TV Dashboard Grid */
+.dashboard-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 1.5rem;
+  min-height: 0;
+}
+
+/* Card General: High efficiency container */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--bg-card-border);
+  border-radius: 24px;
+  padding: 1.75rem 2rem;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+  contain: layout style;
+  transition: border-color 0.25s ease;
+}
+
+/* Card Glowing Top Accent */
+.card-glow-edge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  pointer-events: none;
+}
+
+.aave-card .card-glow-edge {
+  background: linear-gradient(90deg, transparent, var(--aave-cyan), var(--aave-purple), transparent);
+}
+
+.btc-card .card-glow-edge {
+  background: linear-gradient(90deg, transparent, var(--btc-orange), transparent);
+}
+
+/* Hero AAVE Card Emphasis */
+.card-hero {
+  border: 1px solid rgba(46, 186, 198, 0.28);
+}
+
+/* Coin Header Profile */
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.coin-profile {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.coin-avatar {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.coin-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.coin-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.coin-symbol {
+  font-size: 1.85rem;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.card-secondary .coin-symbol {
+  font-size: 1.55rem;
+}
+
+.quote-asset {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.coin-fullname {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.primary-tag {
+  background: rgba(46, 186, 198, 0.15);
+  color: var(--aave-cyan);
+  border: 1px solid rgba(46, 186, 198, 0.3);
+}
+
+.btc-tag {
+  background: rgba(247, 147, 26, 0.15);
+  color: var(--btc-orange);
+  border: 1px solid rgba(247, 147, 26, 0.3);
+}
+
+/* 24h Change Pill */
+.change-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.change-pill.positive {
+  background: var(--green-bg);
+  color: var(--green);
+  border-color: rgba(14, 203, 129, 0.3);
+}
+
+.change-pill.negative {
+  background: var(--red-bg);
+  color: var(--red);
+  border-color: rgba(246, 70, 93, 0.3);
+}
+
+.change-arrow {
+  font-size: 0.75rem;
+}
+
+.change-value {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.change-amount {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  margin-left: 0.15rem;
+}
+
+/* Price Container & Typography */
+.price-container {
+  display: flex;
+  flex-direction: column;
+  margin: 0.75rem 0 1rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  position: relative;
+  contain: layout style;
+}
+
+.price-super-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.price-wrapper {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  position: relative;
+}
+
+.currency-sign {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* ULTRA BIG PRICE FOR AAVE */
+.hero-price-container .currency-sign {
+  font-size: clamp(2.5rem, 4.5vw, 5.5rem);
+}
+
+.hero-price-value {
+  font-size: clamp(4.2rem, 7.8vw, 9.8rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+  line-height: 0.95;
+  transition: color 0.25s ease;
+}
+
+/* SECONDARY PRICE FOR BTC */
+.secondary-price-container .currency-sign {
+  font-size: clamp(1.8rem, 2.5vw, 3rem);
+}
+
+.secondary-price-value {
+  font-size: clamp(2.5rem, 3.8vw, 4.8rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #e5ebf3;
+  line-height: 1;
+  transition: color 0.25s ease;
+}
+
+/* Highly efficient color-only tick flashes (0 GPU re-rasterization!) */
+.tick-up {
+  color: var(--green) !important;
+}
+
+.tick-down {
+  color: var(--red) !important;
+}
+
+.card.flash-up-border {
+  border-color: rgba(14, 203, 129, 0.6);
+}
+
+.card.flash-down-border {
+  border-color: rgba(246, 70, 93, 0.6);
+}
+
+/* Sparkline Chart Container */
+.chart-wrapper {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+  flex: 1;
+  min-height: 100px;
+  contain: layout style paint;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.chart-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.chart-sub {
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.canvas-container {
+  width: 100%;
+  height: 100%;
+  min-height: 90px;
+  position: relative;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+}
+
+.hero-canvas-container {
+  min-height: 110px;
+}
+
+canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.card-secondary .stats-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+}
+
+.stat-box {
+  background: var(--bg-stat-box);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.stat-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.stat-value {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.high-val {
+  color: var(--green);
+}
+
+.low-val {
+  color: var(--red);
+}
+
+/* 24h Range Bar */
+.range-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: auto;
+}
+
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.range-labels strong {
+  color: var(--text-secondary);
+}
+
+.range-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 6px;
+  position: relative;
+  overflow: visible;
+}
+
+.range-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.aave-range-fill {
+  background: linear-gradient(90deg, var(--aave-purple), var(--aave-cyan));
+}
+
+.btc-range-fill {
+  background: linear-gradient(90deg, #d47008, var(--btc-orange));
+}
+
+.range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: #ffffff;
+  border: 2px solid #000;
+  transition: left 0.3s ease;
+}
+
+/* TV Bottom Footer */
+.bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1.25rem;
+  background: #0d121c;
+  border: 1px solid var(--bg-card-border);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  contain: layout style;
+}
+
+.footer-left, .footer-right {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.tv-url-tip {
+  color: var(--text-secondary);
+}
+
+.tv-url-tip strong {
+  color: var(--aave-cyan);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  background: rgba(46, 186, 198, 0.1);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+.bullet {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+kbd {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: #fff;
+}
+
+.screen-wake {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #a0aec0;
+}
+
+.wake-icon {
+  color: #ffd000;
+}
+
+.data-source {
+  color: var(--text-secondary);
+}
+
+.last-sync {
+  font-family: var(--font-mono);
+}
+
+/* Responsive considerations */
+@media (max-width: 1024px) {
+  .tv-container {
+    height: auto;
+    min-height: 100vh;
+  }
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+}
+
+/* Fullscreen mode TV optimization */
+:fullscreen .tv-container {
+  padding: 1.5rem 2.25rem;
+  height: 100vh;
+}
+
+:-webkit-full-screen .tv-container {
+  padding: 1.5rem 2.25rem;
+  height: 100vh;
+}

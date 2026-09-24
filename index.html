@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crypto TV Live Display | AAVE & BTC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="ambient-glow glow-aave"></div>
+  <div class="ambient-glow glow-btc"></div>
+
+  <div class="tv-container">
+    <!-- Header bar -->
+    <header class="top-nav">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">TERMINAL<span class="brand-accent">TV</span></span>
+          <span class="brand-subtitle">REAL-TIME CRYPTO DISPLAY</span>
+        </div>
+      </div>
+
+      <div class="status-clock-group">
+        <div class="connection-status" id="connectionStatus" title="Binance WebSocket Stream">
+          <span class="status-dot"></span>
+          <span class="status-label" id="statusLabel">CONNECTING...</span>
+          <span class="ping-badge" id="pingBadge">0ms</span>
+        </div>
+
+        <div class="clock-display" id="clockDisplay">
+          <span class="time-text" id="liveTime">00:00:00</span>
+          <span class="date-text" id="liveDate">--- --, ----</span>
+        </div>
+
+        <button class="icon-btn" id="fullscreenBtn" title="Toggle Fullscreen (F)">
+          <svg id="fullscreenIcon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main TV Display Grid -->
+    <main class="dashboard-grid">
+      <!-- HERO: AAVE/USDT (Significantly Bigger) -->
+      <section class="card card-hero aave-card" id="aaveCard">
+        <div class="card-glow-edge"></div>
+
+        <div class="card-header">
+          <div class="coin-profile">
+            <div class="coin-avatar aave-avatar">
+              <!-- AAVE SVG Logo -->
+              <svg viewBox="0 0 32 32" width="44" height="44" fill="none">
+                <circle cx="16" cy="16" r="16" fill="url(#aaveGrad)"/>
+                <path d="M16 7L9 25H12.5L14 21H18L19.5 25H23L16 7ZM14.8 18.5L16 14.5L17.2 18.5H14.8Z" fill="#FFFFFF"/>
+                <defs>
+                  <linearGradient id="aaveGrad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#2EBAC6"/>
+                    <stop offset="1" stop-color="#B6509E"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <div class="coin-meta">
+              <div class="coin-name-row">
+                <h1 class="coin-symbol">AAVE<span class="quote-asset">/USDT</span></h1>
+                <span class="badge primary-tag">PRIMARY FOCUS</span>
+              </div>
+              <span class="coin-fullname">Aave Protocol • Spot Live</span>
+            </div>
+          </div>
+
+          <div class="change-pill" id="aaveChangePill">
+            <span class="change-arrow" id="aaveArrow">▶</span>
+            <span class="change-value" id="aaveChangePct">0.00%</span>
+            <span class="change-amount" id="aaveChangeAmt">+$0.00</span>
+          </div>
+        </div>
+
+        <!-- Big Hero Price -->
+        <div class="price-container hero-price-container">
+          <div class="price-super-label">CURRENT PRICE (USD)</div>
+          <div class="price-wrapper" id="aavePriceWrapper">
+            <span class="currency-sign">$</span>
+            <span class="price-value hero-price-value" id="aavePrice">---.--</span>
+            <span class="price-tick-indicator" id="aaveTickIndicator"></span>
+          </div>
+        </div>
+
+        <!-- Live Sparkline Chart -->
+        <div class="chart-wrapper">
+          <div class="chart-header">
+            <span class="chart-title">LIVE TICK MOMENTUM</span>
+            <span class="chart-sub">Real-time trade stream (last 60 ticks)</span>
+          </div>
+          <div class="canvas-container hero-canvas-container">
+            <canvas id="aaveSparkline"></canvas>
+          </div>
+        </div>
+
+        <!-- Key Market Stats Row -->
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="stat-label">24H HIGH</span>
+            <span class="stat-value high-val" id="aaveHigh">$---.--</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">24H LOW</span>
+            <span class="stat-value low-val" id="aaveLow">$---.--</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">24H VOL (AAVE)</span>
+            <span class="stat-value" id="aaveVolBase">---</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">24H VOL (USDT)</span>
+            <span class="stat-value" id="aaveVolQuote">---</span>
+          </div>
+        </div>
+
+        <!-- 24h Range Bar -->
+        <div class="range-container">
+          <div class="range-labels">
+            <span>24h Low: <strong id="aaveRangeLow">$0.00</strong></span>
+            <span>24h Range Position</span>
+            <span>24h High: <strong id="aaveRangeHigh">$0.00</strong></span>
+          </div>
+          <div class="range-track">
+            <div class="range-fill aave-range-fill" id="aaveRangeBar" style="width: 50%;"></div>
+            <div class="range-thumb aave-thumb" id="aaveRangeThumb" style="left: 50%;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECONDARY: BTC/USDT -->
+      <section class="card card-secondary btc-card" id="btcCard">
+        <div class="card-glow-edge"></div>
+
+        <div class="card-header">
+          <div class="coin-profile">
+            <div class="coin-avatar btc-avatar">
+              <!-- Bitcoin SVG Logo -->
+              <svg viewBox="0 0 32 32" width="38" height="38" fill="none">
+                <circle cx="16" cy="16" r="16" fill="#F7931A"/>
+                <path d="M22.3 13.7c.3-2-1.2-3.1-3.3-3.8l.7-2.7-1.7-.4-.6 2.6c-.4-.1-.9-.2-1.4-.3l.7-2.6-1.7-.4-.7 2.7c-.4-.1-.7-.2-1.1-.3l-2.3-.6-.5 1.8s1.2.3 1.2.3c.7.2.8.6.8 1l-.8 3.3c0 .1.1 0 .2.1-.1 0-.2-.1-.2-.1l-1.2 4.7c-.1.2-.3.6-.8.4 0 0-1.2-.3-1.2-.3l-.9 2 2.2.6c.4.1.8.2 1.2.3l-.7 2.8 1.7.4.7-2.7c.5.1.9.2 1.4.3l-.7 2.7 1.7.4.7-2.8c2.9.5 5.1.3 6-2.3.8-2.1 0-3.3-1.5-4.1 1.1-.3 1.9-1.1 2.1-2.7zm-3.8 5.7c-.5 2.1-4 1-5.1.7l.9-3.7c1.1.3 4.8.8 4.2 3zm.5-5.8c-.5 1.9-3.4.9-4.3.7l.8-3.3c.9.2 4 .7 3.5 2.6z" fill="#FFFFFF"/>
+              </svg>
+            </div>
+            <div class="coin-meta">
+              <div class="coin-name-row">
+                <h2 class="coin-symbol">BTC<span class="quote-asset">/USDT</span></h2>
+                <span class="badge btc-tag">MARKET BENCHMARK</span>
+              </div>
+              <span class="coin-fullname">Bitcoin • Benchmark Index</span>
+            </div>
+          </div>
+
+          <div class="change-pill" id="btcChangePill">
+            <span class="change-arrow" id="btcArrow">▶</span>
+            <span class="change-value" id="btcChangePct">0.00%</span>
+            <span class="change-amount" id="btcChangeAmt">+$0.00</span>
+          </div>
+        </div>
+
+        <!-- Secondary Price (Distinctly smaller than AAVE) -->
+        <div class="price-container secondary-price-container">
+          <div class="price-super-label">CURRENT PRICE (USD)</div>
+          <div class="price-wrapper" id="btcPriceWrapper">
+            <span class="currency-sign">$</span>
+            <span class="price-value secondary-price-value" id="btcPrice">---,---.--</span>
+            <span class="price-tick-indicator" id="btcTickIndicator"></span>
+          </div>
+        </div>
+
+        <!-- Live Sparkline Chart -->
+        <div class="chart-wrapper">
+          <div class="chart-header">
+            <span class="chart-title">BTC LIVE MOMENTUM</span>
+            <span class="chart-sub">Real-time trade stream (last 60 ticks)</span>
+          </div>
+          <div class="canvas-container secondary-canvas-container">
+            <canvas id="btcSparkline"></canvas>
+          </div>
+        </div>
+
+        <!-- Key Market Stats Row -->
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="stat-label">24H HIGH</span>
+            <span class="stat-value high-val" id="btcHigh">$---,---</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">24H LOW</span>
+            <span class="stat-value low-val" id="btcLow">$---,---</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">24H VOL (BTC)</span>
+            <span class="stat-value" id="btcVolBase">---</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">24H VOL (USDT)</span>
+            <span class="stat-value" id="btcVolQuote">---</span>
+          </div>
+        </div>
+
+        <!-- 24h Range Bar -->
+        <div class="range-container">
+          <div class="range-labels">
+            <span>24h Low: <strong id="btcRangeLow">$0</strong></span>
+            <span>24h Range Position</span>
+            <span>24h High: <strong id="btcRangeHigh">$0</strong></span>
+          </div>
+          <div class="range-track">
+            <div class="range-fill btc-range-fill" id="btcRangeBar" style="width: 50%;"></div>
+            <div class="range-thumb btc-thumb" id="btcRangeThumb" style="left: 50%;"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- TV Footer bar -->
+    <footer class="bottom-bar">
+      <div class="footer-left">
+        <span class="keyboard-tip"><kbd>F</kbd> Fullscreen</span>
+        <span class="bullet">•</span>
+        <span class="tv-url-tip">TV URL: <strong>http://192.168.0.104:3344</strong></span>
+        <span class="bullet">•</span>
+        <span class="screen-wake" id="wakeLockStatus">
+          <span class="wake-icon">⚡</span> Screen Awake Active
+        </span>
+      </div>
+      <div class="footer-right">
+        <span class="data-source">Direct Binance Liquid Stream (Zero Delay)</span>
+        <span class="bullet">•</span>
+        <span class="last-sync" id="lastSyncText">Sync: Just now</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
