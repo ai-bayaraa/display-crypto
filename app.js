@@ -1,13 +1,10 @@
 /**
- * Crypto TV Live Display - Ultra Low-CPU / High-Reliability Architecture
+ * Crypto TV Live Display - 15M Candlesticks & 2% Move Audio Alert System
  *
- * Resource Management Optimizations:
- * 1. Zero-Idle CPU: Rendering is event-driven; requestAnimationFrame is only scheduled
- *    when dirty data arrives and pauses completely when idle.
- * 2. Background Throttling: Automatically suspends DOM and Canvas updates when the tab is hidden.
- * 3. Zero-Blur Canvas: Uses fast native geometry (concentric arcs) instead of expensive CPU shadowBlur.
- * 4. Consolidated Heartbeat: A single 1-second interval handles clock, watchdog, and cleanup.
- * 5. Memory Capped: Historical sparkline data is capped at 30 items with zero memory leakage.
+ * Features:
+ * 1. 15-Minute Candlestick Chart: Real-time rendering via Binance REST + @kline_15m stream.
+ * 2. 2% Audio Alert: Synthesizes melodic ascending / descending alerts on ±2% 15m moves.
+ * 3. Zero-Idle CPU: Event-driven render loop, background suspension, and resource capping.
  */
 
 // State Management
@@ -23,7 +20,7 @@ const state = {
     low: 0,
     volBase: 0,
     volQuote: 0,
-    history: [],
+    candles: [], // [{ time, open, high, low, close, volume, isClosed, alertedUp, alertedDown }]
     canvas: null,
     isDirty: false,
     lastTickDir: null,
@@ -40,7 +37,7 @@ const state = {
     low: 0,
     volBase: 0,
     volQuote: 0,
-    history: [],
+    candles: [],
     canvas: null,
     isDirty: false,
     lastTickDir: null,
@@ -48,7 +45,8 @@ const state = {
   },
   ws: null,
   reconnectAttempts: 0,
-  maxHistoryPoints: 30,
+  maxCandles: 35,
+  soundEnabled: true,
   lastMsgTime: Date.now(),
   heartbeatTicks: 0,
   isConnecting: false,
@@ -74,6 +72,7 @@ const DOM = {
   aaveRangeLow: document.getElementById('aaveRangeLow'),
   aaveRangeHigh: document.getElementById('aaveRangeHigh'),
   aaveSparkline: document.getElementById('aaveSparkline'),
+  aaveCandleSub: document.getElementById('aaveCandleSub'),
 
   // BTC
   btcCard: document.getElementById('btcCard'),
@@ -91,8 +90,9 @@ const DOM = {
   btcRangeLow: document.getElementById('btcRangeLow'),
   btcRangeHigh: document.getElementById('btcRangeHigh'),
   btcSparkline: document.getElementById('btcSparkline'),
+  btcCandleSub: document.getElementById('btcCandleSub'),
 
-  // Header & Status
+  // Header & Status & Alerts
   connectionStatus: document.getElementById('connectionStatus'),
   statusLabel: document.getElementById('statusLabel'),
   pingBadge: document.getElementById('pingBadge'),
@@ -100,7 +100,11 @@ const DOM = {
   liveDate: document.getElementById('liveDate'),
   fullscreenBtn: document.getElementById('fullscreenBtn'),
   wakeLockStatus: document.getElementById('wakeLockStatus'),
-  lastSyncText: document.getElementById('lastSyncText')
+  lastSyncText: document.getElementById('lastSyncText'),
+  soundToggleBtn: document.getElementById('soundToggleBtn'),
+  soundIcon: document.getElementById('soundIcon'),
+  soundLabel: document.getElementById('soundLabel'),
+  toastContainer: document.getElementById('toastContainer')
 };
 
 // Cached canvas dimensions
@@ -108,6 +112,108 @@ const canvasDims = {
   aave: { w: 0, h: 0, dpr: 1 },
   btc: { w: 0, h: 0, dpr: 1 }
 };
+
+// Audio Context Singleton for Sound Alert
+let audioCtx = null;
+
+function getAudioContext() {
+  if (!audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      audioCtx = new AudioContextClass();
+    }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+/**
+ * Play synthesizer audio alert for ±2% 15m moves
+ * - type 'up': Ascending melodic chime (C5 -> E5 -> G5 -> C6)
+ * - type 'down': Descending alert chime (G5 -> Eb5 -> C5 -> G4)
+ */
+function playAlertSound(type = 'up') {
+  if (!state.soundEnabled) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  const now = ctx.currentTime;
+  const isUp = type === 'up';
+
+  const masterGain = ctx.createGain();
+  masterGain.gain.setValueAtTime(0.28, now);
+  masterGain.connect(ctx.destination);
+
+  const notes = isUp
+    ? [523.25, 659.25, 783.99, 1046.50]
+    : [783.99, 622.25, 523.25, 392.00];
+
+  const noteDuration = 0.12;
+
+  notes.forEach((freq, idx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = isUp ? 'triangle' : 'sine';
+    osc.frequency.setValueAtTime(freq, now + idx * noteDuration);
+
+    gain.gain.setValueAtTime(0.001, now + idx * noteDuration);
+    gain.gain.exponentialRampToValueAtTime(0.28, now + idx * noteDuration + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + (idx + 1) * noteDuration + 0.06);
+
+    osc.connect(gain);
+    gain.connect(masterGain);
+
+    osc.start(now + idx * noteDuration);
+    osc.stop(now + (idx + 1) * noteDuration + 0.07);
+  });
+}
+
+// Visual Toast notification on 2% move
+function showToastAlert(coinKey, pct, dir, price) {
+  if (!DOM.toastContainer) return;
+
+  const toast = document.createElement('div');
+  const isUp = dir === 'up';
+  toast.className = `toast-alert ${isUp ? 'toast-up' : 'toast-down'}`;
+  const coinSymbol = coinKey === 'aave' ? 'AAVE' : 'BTC';
+  const sign = isUp ? '+' : '';
+  const arrow = isUp ? '▲' : '▼';
+
+  toast.innerHTML = `
+    <span>${isUp ? '🚀' : '⚠️'}</span>
+    <span><strong>${coinSymbol}</strong> 15m Move: ${arrow} ${sign}${pct.toFixed(2)}% ($${formatUSD(price)})</span>
+  `;
+
+  DOM.toastContainer.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('toast-fade-out');
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 400);
+  }, 5000);
+}
+
+// Check 2% movement threshold on 15m candle
+function checkCandleMoveAlert(coinKey, candle) {
+  if (!candle || !candle.open) return;
+  const pct = ((candle.close - candle.open) / candle.open) * 100;
+
+  if (pct >= 2.0 && !candle.alertedUp) {
+    candle.alertedUp = true;
+    playAlertSound('up');
+    showToastAlert(coinKey, pct, 'up', candle.close);
+  } else if (pct <= -2.0 && !candle.alertedDown) {
+    candle.alertedDown = true;
+    playAlertSound('down');
+    showToastAlert(coinKey, pct, 'down', candle.close);
+  }
+}
 
 // Number Formatters
 const formatUSD = (val) => {
@@ -158,10 +264,9 @@ function initSparklines() {
 }
 
 /**
- * Ultra-Lean Canvas Sparkline Render
- * Zero shadowBlur calculations, fast native line & fill
+ * 15-Minute Candlestick Chart Renderer
  */
-function renderSparkline(coinKey) {
+function renderCandlesticks(coinKey) {
   const coin = state[coinKey];
   const canvas = coin.canvas;
   const dims = canvasDims[coinKey];
@@ -172,83 +277,139 @@ function renderSparkline(coinKey) {
   ctx.scale(dims.dpr, dims.dpr);
   ctx.clearRect(0, 0, dims.w, dims.h);
 
-  const history = coin.history;
-  if (history.length < 2) {
+  const candles = coin.candles;
+  if (!candles || candles.length === 0) {
     ctx.restore();
     return;
   }
 
-  const min = Math.min(...history);
-  const max = Math.max(...history);
-  const range = (max - min) || 1;
-  const paddingY = dims.h * 0.16;
-  const drawHeight = dims.h - paddingY * 2;
-
-  const getX = (i) => (i / (history.length - 1)) * dims.w;
-  const getY = (val) => dims.h - paddingY - ((val - min) / range) * drawHeight;
-
-  const isUp = history[history.length - 1] >= history[0];
-  const themeColor = isUp ? '14, 203, 129' : '246, 70, 93';
-
-  // Area Fill
-  const grad = ctx.createLinearGradient(0, 0, 0, dims.h);
-  grad.addColorStop(0, `rgba(${themeColor}, 0.22)`);
-  grad.addColorStop(1, `rgba(${themeColor}, 0.0)`);
-
-  ctx.beginPath();
-  ctx.moveTo(getX(0), getY(history[0]));
-  for (let i = 0; i < history.length - 1; i++) {
-    const x0 = getX(i);
-    const y0 = getY(history[i]);
-    const x1 = getX(i + 1);
-    const y1 = getY(history[i + 1]);
-    const mx = (x0 + x1) / 2;
-    ctx.bezierCurveTo(mx, y0, mx, y1, x1, y1);
+  // Update candle subtitle stats
+  const lastCandle = candles[candles.length - 1];
+  const subEl = coinKey === 'aave' ? DOM.aaveCandleSub : DOM.btcCandleSub;
+  if (subEl && lastCandle && lastCandle.open) {
+    const candlePct = ((lastCandle.close - lastCandle.open) / lastCandle.open) * 100;
+    const isUp = candlePct >= 0;
+    const color = isUp ? 'var(--green)' : 'var(--red)';
+    subEl.innerHTML = `<span style="color: ${color}; font-weight: 700;">15m: ${isUp ? '+' : ''}${candlePct.toFixed(2)}%</span> &bull; O: $${formatUSD(lastCandle.open)} &bull; H: $${formatUSD(lastCandle.high)} &bull; L: $${formatUSD(lastCandle.low)}`;
   }
-  ctx.lineTo(dims.w, dims.h);
-  ctx.lineTo(0, dims.h);
-  ctx.closePath();
-  ctx.fillStyle = grad;
-  ctx.fill();
 
-  // Stroke Line
-  ctx.beginPath();
-  ctx.moveTo(getX(0), getY(history[0]));
-  for (let i = 0; i < history.length - 1; i++) {
-    const x0 = getX(i);
-    const y0 = getY(history[i]);
-    const x1 = getX(i + 1);
-    const y1 = getY(history[i + 1]);
-    const mx = (x0 + x1) / 2;
-    ctx.bezierCurveTo(mx, y0, mx, y1, x1, y1);
+  // Calculate min and max across all candles
+  let min = Infinity;
+  let max = -Infinity;
+  for (let i = 0; i < candles.length; i++) {
+    const c = candles[i];
+    if (c.low < min) min = c.low;
+    if (c.high > max) max = c.high;
   }
-  ctx.strokeStyle = isUp ? '#0ecb81' : '#f6465d';
-  ctx.lineWidth = 2.0;
+
+  const range = (max - min) || (max * 0.005) || 1;
+  const padPrice = range * 0.09;
+  const effMin = min - padPrice;
+  const effMax = max + padPrice;
+  const effRange = effMax - effMin;
+
+  const getY = (val) => dims.h - ((val - effMin) / effRange) * dims.h;
+
+  const rightPad = 62;
+  const chartW = dims.w - rightPad;
+
+  // Grid reference lines & prices
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+  ctx.font = '10px JetBrains Mono';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 1;
+
+  [0.2, 0.5, 0.8].forEach(ratio => {
+    const p = effMin + effRange * ratio;
+    const y = getY(p);
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(chartW, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillText(`$${formatUSD(p)}`, dims.w - 5, y);
+  });
+
+  // Candlesticks
+  const count = candles.length;
+  const slotW = chartW / count;
+  const bodyW = Math.max(3, Math.min(16, slotW * 0.72));
+
+  for (let i = 0; i < count; i++) {
+    const c = candles[i];
+    const isBull = c.close >= c.open;
+    const color = isBull ? '#0ecb81' : '#f6465d';
+    const xCenter = (i + 0.5) * slotW;
+
+    const yOpen = getY(c.open);
+    const yClose = getY(c.close);
+    const yHigh = getY(c.high);
+    const yLow = getY(c.low);
+
+    // Wick
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(xCenter, yHigh);
+    ctx.lineTo(xCenter, yLow);
+    ctx.stroke();
+
+    // Body
+    const bodyTop = Math.min(yOpen, yClose);
+    const bodyH = Math.max(2, Math.abs(yClose - yOpen));
+    ctx.fillStyle = color;
+    ctx.fillRect(xCenter - bodyW / 2, bodyTop, bodyW, bodyH);
+
+    // Active candle marker
+    if (i === count - 1) {
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(xCenter - bodyW / 2 - 1, bodyTop - 1, bodyW + 2, bodyH + 2);
+    }
+  }
+
+  // Current price line & tag badge
+  const curPrice = coin.price || lastCandle.close;
+  const curY = getY(curPrice);
+  const curIsBull = lastCandle.close >= lastCandle.open;
+  const curColor = curIsBull ? '#0ecb81' : '#f6465d';
+
+  ctx.setLineDash([3, 3]);
+  ctx.strokeStyle = curColor;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(0, curY);
+  ctx.lineTo(chartW, curY);
   ctx.stroke();
+  ctx.setLineDash([]);
 
-  // Glowing Head Point (Dual Arcs: 0% GPU Blur penalty)
-  const lastX = getX(history.length - 1);
-  const lastY = getY(history[history.length - 1]);
+  // Tag badge on right
+  const badgeH = 18;
+  const badgeW = rightPad - 4;
+  const badgeY = Math.max(2, Math.min(dims.h - badgeH - 2, curY - badgeH / 2));
+  ctx.fillStyle = curColor;
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(chartW + 2, badgeY, badgeW, badgeH, 4);
+    ctx.fill();
+  } else {
+    ctx.fillRect(chartW + 2, badgeY, badgeW, badgeH);
+  }
 
-  // Outer halo ring
-  ctx.beginPath();
-  ctx.arc(lastX, lastY, 6.5, 0, Math.PI * 2);
-  ctx.fillStyle = isUp ? 'rgba(14, 203, 129, 0.35)' : 'rgba(246, 70, 93, 0.35)';
-  ctx.fill();
-
-  // Inner solid core
-  ctx.beginPath();
-  ctx.arc(lastX, lastY, 3.5, 0, Math.PI * 2);
   ctx.fillStyle = '#ffffff';
-  ctx.fill();
+  ctx.font = 'bold 10px JetBrains Mono';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(curPrice.toFixed(coinKey === 'aave' ? 2 : 1), chartW + 2 + badgeW / 2, badgeY + badgeH / 2);
 
   ctx.restore();
 }
 
 /**
  * Event-Driven Render Scheduler
- * Only fires when dirty, cancels if tab is backgrounded.
- * At idle market periods, this consumes 0.0% CPU.
  */
 function scheduleRender() {
   if (state.isRenderScheduled || document.hidden) return;
@@ -284,8 +445,8 @@ function renderFrame() {
         cardEl.classList.add(isUp ? 'flash-up-border' : 'flash-down-border');
       }
 
-      // Redraw canvas sparkline
-      renderSparkline(key);
+      // Redraw canvas 15m candlesticks
+      renderCandlesticks(key);
 
       // Update range slider
       updateRangeBar(isAave, coin.price, coin.low, coin.high);
@@ -293,7 +454,7 @@ function renderFrame() {
   });
 }
 
-// Ingest Trade Update (Lightweight)
+// Ingest Trade Update
 function ingestTrade(symbol, price) {
   const isAave = symbol.toUpperCase() === 'AAVEUSDT';
   const coin = isAave ? state.aave : state.btc;
@@ -307,15 +468,67 @@ function ingestTrade(symbol, price) {
   coin.prevPrice = prev;
   coin.price = numPrice;
 
-  // Append history (capped at maxHistoryPoints)
-  coin.history.push(numPrice);
-  if (coin.history.length > state.maxHistoryPoints) {
-    coin.history.shift();
+  // Update current active candle live
+  if (coin.candles.length > 0) {
+    const currentCandle = coin.candles[coin.candles.length - 1];
+    currentCandle.close = numPrice;
+    if (numPrice > currentCandle.high) currentCandle.high = numPrice;
+    if (numPrice < currentCandle.low) currentCandle.low = numPrice;
+    checkCandleMoveAlert(isAave ? 'aave' : 'btc', currentCandle);
   }
 
   coin.isDirty = true;
   state.lastMsgTime = Date.now();
 
+  scheduleRender();
+}
+
+// Ingest Kline Stream Update (15m)
+function ingestKline(symbol, k) {
+  const isAave = symbol.toUpperCase() === 'AAVEUSDT';
+  const coinKey = isAave ? 'aave' : 'btc';
+  const coin = state[coinKey];
+
+  const time = Number(k.t);
+  const open = Number(k.o);
+  const high = Number(k.h);
+  const low = Number(k.l);
+  const close = Number(k.c);
+  const volume = Number(k.v);
+  const isClosed = k.x;
+
+  let candle = coin.candles.find(c => c.time === time);
+  if (candle) {
+    candle.high = high;
+    candle.low = low;
+    candle.close = close;
+    candle.volume = volume;
+    candle.isClosed = isClosed;
+  } else {
+    candle = {
+      time,
+      open,
+      high,
+      low,
+      close,
+      volume,
+      isClosed,
+      alertedUp: false,
+      alertedDown: false
+    };
+    coin.candles.push(candle);
+    if (coin.candles.length > state.maxCandles) {
+      coin.candles.shift();
+    }
+  }
+
+  if (close) {
+    coin.price = close;
+  }
+
+  checkCandleMoveAlert(coinKey, candle);
+
+  coin.isDirty = true;
   scheduleRender();
 }
 
@@ -404,22 +617,27 @@ async function fetchRestSnapshot() {
       DOM.connectionStatus.classList.add('connected');
       DOM.connectionStatus.classList.remove('disconnected');
     }
-  } catch (err) {
-    // Fail silently in background
-  }
+  } catch (err) {}
 }
 
 async function loadKlineHistory(symbol, coinKey) {
   try {
-    const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=15m&limit=25`);
+    const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=15m&limit=35`);
     if (res.ok) {
       const klines = await res.json();
-      const closePrices = klines.map(k => Number(k[4]));
-      if (closePrices.length > 0) {
-        state[coinKey].history = closePrices;
-        state[coinKey].isDirty = true;
-        scheduleRender();
-      }
+      state[coinKey].candles = klines.map(k => ({
+        time: Number(k[0]),
+        open: Number(k[1]),
+        high: Number(k[2]),
+        low: Number(k[3]),
+        close: Number(k[4]),
+        volume: Number(k[5]),
+        isClosed: true,
+        alertedUp: false,
+        alertedDown: false
+      }));
+      state[coinKey].isDirty = true;
+      scheduleRender();
     }
   } catch (e) {}
 }
@@ -446,7 +664,9 @@ function connectWebSocket() {
     'aaveusdt@ticker',
     'btcusdt@ticker',
     'aaveusdt@aggTrade',
-    'btcusdt@aggTrade'
+    'btcusdt@aggTrade',
+    'aaveusdt@kline_15m',
+    'btcusdt@kline_15m'
   ].join('/');
 
   const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streamNames}`;
@@ -480,6 +700,8 @@ function connectWebSocket() {
 
         if (stream.endsWith('@aggTrade')) {
           ingestTrade(data.s, data.p);
+        } else if (stream.endsWith('@kline_15m')) {
+          ingestKline(data.s, data.k);
         } else if (stream.endsWith('@ticker')) {
           ingestTicker(data.s, data);
         }
@@ -510,8 +732,6 @@ function connectWebSocket() {
 
 /**
  * Consolidated 1-Second Heartbeat Loop
- * Combines Clock update, Watchdog stall check, tick class cleanup,
- * and 30s background sync into ONE single low-power timer.
  */
 function startConsolidatedHeartbeat() {
   setInterval(() => {
@@ -544,7 +764,7 @@ function startConsolidatedHeartbeat() {
       }
     });
 
-    // 3. Watchdog check (every second)
+    // 3. Watchdog check
     const elapsed = now - state.lastMsgTime;
     if (elapsed > 5500) {
       DOM.connectionStatus.classList.remove('connected');
@@ -555,11 +775,50 @@ function startConsolidatedHeartbeat() {
       connectWebSocket();
     }
 
-    // 4. Background safety sync (every 30 seconds)
+    // 4. Background safety sync (every 30s)
     if (state.heartbeatTicks % 30 === 0) {
       fetchRestSnapshot();
     }
   }, 1000);
+}
+
+// Sound Control Setup & AudioContext Auto-unlock
+function setupSoundControl() {
+  if (!DOM.soundToggleBtn) return;
+
+  const updateSoundUI = () => {
+    if (state.soundEnabled) {
+      DOM.soundToggleBtn.classList.remove('sound-muted');
+      DOM.soundIcon.textContent = '🔔';
+      DOM.soundLabel.textContent = 'SOUND: ON (±2%)';
+    } else {
+      DOM.soundToggleBtn.classList.add('sound-muted');
+      DOM.soundIcon.textContent = '🔕';
+      DOM.soundLabel.textContent = 'SOUND: MUTED';
+    }
+  };
+
+  DOM.soundToggleBtn.addEventListener('click', () => {
+    getAudioContext();
+    state.soundEnabled = !state.soundEnabled;
+    updateSoundUI();
+    if (state.soundEnabled) {
+      playAlertSound('up'); // Immediate test sound confirmation
+    }
+  });
+
+  // Browser Autoplay policy: unlock on first gesture
+  const unlockAudio = () => {
+    getAudioContext();
+    window.removeEventListener('click', unlockAudio);
+    window.removeEventListener('keydown', unlockAudio);
+    window.removeEventListener('touchstart', unlockAudio);
+  };
+  window.addEventListener('click', unlockAudio);
+  window.addEventListener('keydown', unlockAudio);
+  window.addEventListener('touchstart', unlockAudio);
+
+  updateSoundUI();
 }
 
 // Screen Wake Lock API
@@ -575,13 +834,11 @@ async function requestScreenWakeLock() {
   }
 }
 
-// Visibility change: suspend rendering when tab/screen is hidden
+// Visibility change handler
 document.addEventListener('visibilitychange', async () => {
   if (document.hidden) {
-    // Backgrounded: stop rendering
     state.isRenderScheduled = false;
   } else {
-    // Returned to view: request wakeLock, sync REST, and render once
     await requestScreenWakeLock();
     fetchRestSnapshot();
     state.aave.isDirty = true;
@@ -624,19 +881,19 @@ window.addEventListener('resize', () => {
 
 // Boot Application
 document.addEventListener('DOMContentLoaded', async () => {
-  // Update TV URL badge dynamically
   const tvUrlEl = document.querySelector('.tv-url-tip strong');
   if (tvUrlEl && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && !window.location.hostname.startsWith('192.168.')) {
     tvUrlEl.textContent = window.location.origin + window.location.pathname;
   }
 
+  setupSoundControl();
   initSparklines();
   startConsolidatedHeartbeat();
 
   // 1. Initial REST snapshot
   await fetchRestSnapshot();
 
-  // 2. Load historical kline curves
+  // 2. Load historical 15m candles
   loadKlineHistory('AAVEUSDT', 'aave');
   loadKlineHistory('BTCUSDT', 'btc');
 

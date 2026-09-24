@@ -30,6 +30,11 @@
       </div>
 
       <div class="status-clock-group">
+        <button class="sound-toggle-btn" id="soundToggleBtn" title="Click to test / toggle ±2% sound alert">
+          <span class="sound-icon" id="soundIcon">🔔</span>
+          <span class="sound-label" id="soundLabel">SOUND: ON (±2%)</span>
+        </button>
+
         <div class="connection-status" id="connectionStatus" title="Binance WebSocket Stream">
           <span class="status-dot"></span>
           <span class="status-label" id="statusLabel">CONNECTING...</span>
@@ -48,6 +53,9 @@
         </button>
       </div>
     </header>
+
+    <!-- Alert Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
 
     <!-- Main TV Display Grid -->
     <main class="dashboard-grid">
@@ -96,11 +104,14 @@
           </div>
         </div>
 
-        <!-- Live Sparkline Chart -->
+        <!-- 15M Candlestick Chart -->
         <div class="chart-wrapper">
           <div class="chart-header">
-            <span class="chart-title">LIVE TICK MOMENTUM</span>
-            <span class="chart-sub">Real-time trade stream (last 60 ticks)</span>
+            <div class="chart-title-group">
+              <span class="chart-title">15M CANDLESTICKS</span>
+              <span class="interval-tag">15m</span>
+            </div>
+            <span class="chart-sub" id="aaveCandleSub">Loading 15m candles...</span>
           </div>
           <div class="canvas-container hero-canvas-container">
             <canvas id="aaveSparkline"></canvas>
@@ -180,11 +191,14 @@
           </div>
         </div>
 
-        <!-- Live Sparkline Chart -->
+        <!-- 15M Candlestick Chart -->
         <div class="chart-wrapper">
           <div class="chart-header">
-            <span class="chart-title">BTC LIVE MOMENTUM</span>
-            <span class="chart-sub">Real-time trade stream (last 60 ticks)</span>
+            <div class="chart-title-group">
+              <span class="chart-title">15M CANDLESTICKS</span>
+              <span class="interval-tag">15m</span>
+            </div>
+            <span class="chart-sub" id="btcCandleSub">Loading 15m candles...</span>
           </div>
           <div class="canvas-container secondary-canvas-container">
             <canvas id="btcSparkline"></canvas>
