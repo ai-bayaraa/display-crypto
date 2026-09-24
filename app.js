@@ -275,10 +275,13 @@ function renderCandlesticks(coinKey) {
   const ctx = canvas.getContext('2d');
   ctx.save();
   ctx.scale(dims.dpr, dims.dpr);
-  ctx.clearRect(0, 0, dims.w, dims.h);
-
   const candles = coin.candles;
   if (!candles || candles.length === 0) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.font = '12px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Loading 15m Candlesticks...', dims.w / 2, dims.h / 2);
     ctx.restore();
     return;
   }
@@ -605,41 +608,57 @@ function updateRangeBar(isAave, current, low, high) {
   }
 }
 
-// REST Snapshot API
+// REST Snapshot API with multi-endpoint fallback
 async function fetchRestSnapshot() {
-  try {
-    const res = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbols=["AAVEUSDT","BTCUSDT"]');
-    if (res.ok) {
-      const data = await res.json();
-      data.forEach(item => {
-        ingestTicker(item.symbol, item);
-      });
-      DOM.connectionStatus.classList.add('connected');
-      DOM.connectionStatus.classList.remove('disconnected');
-    }
-  } catch (err) {}
+  const endpoints = [
+    'https://api.binance.com/api/v3/ticker/24hr?symbols=["AAVEUSDT","BTCUSDT"]',
+    'https://data-api.binance.vision/api/v3/ticker/24hr?symbols=["AAVEUSDT","BTCUSDT"]'
+  ];
+  for (const url of endpoints) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        data.forEach(item => {
+          ingestTicker(item.symbol, item);
+        });
+        DOM.connectionStatus.classList.add('connected');
+        DOM.connectionStatus.classList.remove('disconnected');
+        return;
+      }
+    } catch (err) {}
+  }
 }
 
 async function loadKlineHistory(symbol, coinKey) {
-  try {
-    const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=15m&limit=35`);
-    if (res.ok) {
-      const klines = await res.json();
-      state[coinKey].candles = klines.map(k => ({
-        time: Number(k[0]),
-        open: Number(k[1]),
-        high: Number(k[2]),
-        low: Number(k[3]),
-        close: Number(k[4]),
-        volume: Number(k[5]),
-        isClosed: true,
-        alertedUp: false,
-        alertedDown: false
-      }));
-      state[coinKey].isDirty = true;
-      scheduleRender();
-    }
-  } catch (e) {}
+  const endpoints = [
+    `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=15m&limit=35`,
+    `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=15m&limit=35`
+  ];
+  for (const url of endpoints) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const klines = await res.json();
+        if (Array.isArray(klines) && klines.length > 0) {
+          state[coinKey].candles = klines.map(k => ({
+            time: Number(k[0]),
+            open: Number(k[1]),
+            high: Number(k[2]),
+            low: Number(k[3]),
+            close: Number(k[4]),
+            volume: Number(k[5]),
+            isClosed: true,
+            alertedUp: false,
+            alertedDown: false
+          }));
+          state[coinKey].isDirty = true;
+          scheduleRender();
+          return;
+        }
+      }
+    } catch (e) {}
+  }
 }
 
 /**
