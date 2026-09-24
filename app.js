@@ -275,6 +275,8 @@ function renderCandlesticks(coinKey) {
   const ctx = canvas.getContext('2d');
   ctx.save();
   ctx.scale(dims.dpr, dims.dpr);
+  ctx.clearRect(0, 0, dims.w, dims.h);
+
   const candles = coin.candles;
   if (!candles || candles.length === 0) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
@@ -641,17 +643,36 @@ async function loadKlineHistory(symbol, coinKey) {
       if (res.ok) {
         const klines = await res.json();
         if (Array.isArray(klines) && klines.length > 0) {
-          state[coinKey].candles = klines.map(k => ({
-            time: Number(k[0]),
-            open: Number(k[1]),
-            high: Number(k[2]),
-            low: Number(k[3]),
-            close: Number(k[4]),
-            volume: Number(k[5]),
-            isClosed: true,
-            alertedUp: false,
-            alertedDown: false
-          }));
+          const map = new Map();
+          klines.forEach(k => {
+            const time = Number(k[0]);
+            map.set(time, {
+              time,
+              open: Number(k[1]),
+              high: Number(k[2]),
+              low: Number(k[3]),
+              close: Number(k[4]),
+              volume: Number(k[5]),
+              isClosed: true,
+              alertedUp: false,
+              alertedDown: false
+            });
+          });
+          state[coinKey].candles.forEach(c => {
+            if (map.has(c.time)) {
+              const base = map.get(c.time);
+              base.high = Math.max(base.high, c.high);
+              base.low = Math.min(base.low, c.low);
+              base.close = c.close;
+              base.alertedUp = c.alertedUp;
+              base.alertedDown = c.alertedDown;
+            } else {
+              map.set(c.time, c);
+            }
+          });
+          state[coinKey].candles = Array.from(map.values())
+            .sort((a, b) => a.time - b.time)
+            .slice(-state.maxCandles);
           state[coinKey].isDirty = true;
           scheduleRender();
           return;
