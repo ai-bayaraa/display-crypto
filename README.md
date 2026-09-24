@@ -13,3 +13,57 @@ A real-time, TV-optimized cryptocurrency display dashboard designed for continuo
 
 ## Live Access
 - **GitHub Pages**: `https://ai-bayaraa.github.io/display-crypto/`
+
+## Quick Start Commands
+
+### 1. Clone Repository
+```bash
+git clone https://github.com/ai-bayaraa/display-crypto.git
+cd display-crypto
+```
+
+### 2. Run Locally (Choose Any)
+
+**Using Python 3:**
+```bash
+python3 -m http.server 3344
+```
+
+**Using Node.js (npx):**
+```bash
+npx serve -l 3344
+```
+
+**Using PHP:**
+```bash
+php -S localhost:3344
+```
+
+Then open your browser at:
+```text
+http://localhost:3344
+```
+
+### 3. Git Workflow Commands
+
+**Check status:**
+```bash
+git status
+```
+
+**Pull latest changes:**
+```bash
+git pull origin main
+```
+
+**Commit and push changes (deploys automatically to GitHub Pages):**
+```bash
+git add .
+git commit -m "Your commit message"
+git push origin main
+```
+
+## Controls & Shortcuts
+- `F` or **Double Click**: Toggle Fullscreen Mode
+- **Sound Button** (top bar): Click to toggle / test ±2% 15m audio alert
+
